@@ -97,12 +97,11 @@ class Wrapper(WrapperBase):
 
         return 0
 
-    def wrapperWrite(self, handle: str, req: DataListCls, sid: str) -> int:
+    def wrapperWrite(self, handle: str, req: DataListCls) -> int:
         """
         会话模式下: 上行数据写入接口
         :param handle: 会话handle 字符串
         :param req:  请求数据结构
-        :param sid:  请求会话ID
         :return:
         """
         _session = self.session.get_session(handle=handle)
@@ -113,7 +112,7 @@ class Wrapper(WrapperBase):
         print("sending")
         return 0
 
-    def wrapperCreate(self, params: {}, sid: str, persId: int = 0) -> SessionCreateResponse:
+    def wrapperCreate(self, params: {}, sid: str, persId: int = 0, usrTag: str="") -> SessionCreateResponse:
         """
         非会话模式计算接口,对应oneShot请求,可能存在并发调用
         @param ret wrapperOnceExec返回的response中的error_code 将会被自动传入本函数并通过http响应返回给最终用户
@@ -134,6 +133,7 @@ class Wrapper(WrapperBase):
             log.info("can't create this handle:" % handle)
             return -1
         _session.setup_sid(sid)
+        params["usr_tag"] = usrTag
         _session.setup_params(params)
         _session.setup_callback_fn(callback)
 
@@ -233,7 +233,6 @@ class MyReqDataThread(StreamHandleThread):
             res = Response()
             resd = ResponseData()
             resd.key = "result"
-            resd.key = 'output_img'
             if step == steps - 1:  # 这里待优化
                 resd.status = DataEnd  # 最后一条数据是 2
             elif first:
@@ -245,7 +244,7 @@ class MyReqDataThread(StreamHandleThread):
             resd.setData(json.dumps(retC).encode("utf-8"))
             #resd.len = len(resd.data)
             res.list = [resd]
-            self.session_thread.callback_fn(res, self.session_thread.sid)
+            self.session_thread.callback_fn(res, self.session_thread.params["usr_tag"])
             if resd.status == DataEnd:  # 这里要在 i % opt.decoder_step == 0: 外部判断 ，否则进不到这个逻辑
                 self.filelogger.info("reseting session")
                 self.session_thread.reset()
